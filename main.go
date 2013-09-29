@@ -9,11 +9,19 @@ import (
 	"strings"
 )
 
+const Version = "1.0.1"
+
 func main() {
+	var fetchEndpoints = map[string]string{
+		"current": "/api/v1/user/assignments/current",
+		"next":    "/api/v1/user/assignments/next",
+		"demo":    "/api/v1/assignments/demo",
+	}
+
 	app := cli.NewApp()
 	app.Name = "exercism"
 	app.Usage = "A command line tool to interact with http://exercism.io"
-	app.Version = VERSION
+	app.Version = Version
 	app.Commands = []cli.Command{
 		{
 			Name:      "demo",
@@ -34,7 +42,7 @@ func main() {
 					}
 				}
 				assignments, err := FetchAssignments(config,
-					FetchEndpoints["demo"])
+					fetchEndpoints["demo"])
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -59,7 +67,7 @@ func main() {
 					return
 				}
 				assignments, err := FetchAssignments(config,
-					FetchEndpoints["current"])
+					fetchEndpoints["current"])
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -100,7 +108,7 @@ func main() {
 					return
 				}
 				assignments, err := FetchAssignments(config,
-					FetchEndpoints["next"])
+					fetchEndpoints["next"])
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -156,14 +164,14 @@ func main() {
 					return
 				}
 
-				response, err := SubmitAssignment(config, filename, code)
+				submissionPath, err := SubmitAssignment(config, filename, code)
 				if err != nil {
 					fmt.Printf("There was an issue with your submission: %v\n", err)
 					return
 				}
 
 				fmt.Printf("For feedback on your submission visit %s%s.\n",
-					config.Hostname, response.SubmissionPath)
+					config.Hostname, submissionPath)
 
 			},
 		},

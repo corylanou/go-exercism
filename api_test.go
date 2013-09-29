@@ -88,7 +88,7 @@ var submitHandler = func(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userAgentMatches := r.Header.Get("User-Agent") == fmt.Sprintf("github.com/kytrinyx/exercism CLI v%s", VERSION)
+	userAgentMatches := r.Header.Get("User-Agent") == fmt.Sprintf("github.com/kytrinyx/exercism CLI v%s", Version)
 
 	if !userAgentMatches {
 		fmt.Printf("User agent mismatch: %s\n", r.Header.Get("User-Agent"))
@@ -171,10 +171,13 @@ func TestSubmitWithKey(t *testing.T) {
 	response, err := SubmitAssignment(config, "ruby/bob/bob.rb", code)
 	assert.NoError(t, err)
 
-	assert.Equal(t, response.Status, "saved")
-	assert.Equal(t, response.Language, "ruby")
-	assert.Equal(t, response.Exercise, "bob")
-	assert.Equal(t, response.SubmissionPath, "/username/ruby/bob")
+  // We don't use these values in any returns that I can find, only to talk to the server.
+  // Is this the intent or do we plan on using them?  If not, I prefer to keep the data local.
+	//assert.Equal(t, response.Status, "saved")
+	//assert.Equal(t, response.Language, "ruby")
+	//assert.Equal(t, response.Exercise, "bob")
+	//assert.Equal(t, response.SubmissionPath, "/username/ruby/bob")
+	assert.Equal(t, response, "/username/ruby/bob")
 }
 
 func TestSubmitWithIncorrectKey(t *testing.T) {
@@ -190,5 +193,5 @@ func TestSubmitWithIncorrectKey(t *testing.T) {
 	response, err := SubmitAssignment(config, "ruby/bob/bob.rb", code)
 
 	assert.Error(t, err)
-	assert.Nil(t, response)
+	assert.Empty(t, response)
 }
