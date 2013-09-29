@@ -23,3 +23,12 @@ _testmain.go
 
 out/
 release/
+
+
+# vim swap files
+*.swp
+*.swo
+
+# ignore the built binary
+go-exercism
+
