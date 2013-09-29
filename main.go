@@ -1,15 +1,16 @@
-package main
+package api
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-)
 
-const Version = "1.0.1"
+	"corylanou/go-exercism/api"
+	"corylanou/go-exercism/api/configuration"
+	"github.com/codegangsta/cli"
+)
 
 func main() {
 	var fetchEndpoints = map[string]string{
@@ -21,27 +22,27 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "exercism"
 	app.Usage = "A command line tool to interact with http://exercism.io"
-	app.Version = Version
+	app.Version = api.Version
 	app.Commands = []cli.Command{
 		{
 			Name:      "demo",
 			ShortName: "d",
 			Usage:     "Fetch first assignment for each language from exercism.io",
 			Action: func(c *cli.Context) {
-				config, err := ConfigFromFile(HomeDir())
+				config, err := configuration.FromFile(configuration.HomeDir())
 				if err != nil {
-					demoDir, err := DemoDirectory()
+					demoDir, err := configuration.DemoDirectory()
 					if err != nil {
 						fmt.Println(err)
 						return
 					}
-					config = Config{
+					config = configuration.Config{
 						Hostname:          "http://exercism.io",
 						ApiKey:            "",
 						ExercismDirectory: demoDir,
 					}
 				}
-				assignments, err := FetchAssignments(config,
+				assignments, err := api.FetchAssignments(config,
 					fetchEndpoints["demo"])
 				if err != nil {
 					fmt.Println(err)
@@ -49,7 +50,7 @@ func main() {
 				}
 
 				for _, a := range assignments {
-					err := SaveAssignment(config.ExercismDirectory, a)
+					err := api.SaveAssignment(config.ExercismDirectory, a)
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -61,12 +62,12 @@ func main() {
 			ShortName: "f",
 			Usage:     "Fetch current assignment from exercism.io",
 			Action: func(c *cli.Context) {
-				config, err := ConfigFromFile(HomeDir())
+				config, err := configuration.FromFile(configuration.HomeDir())
 				if err != nil {
 					fmt.Println("Are you sure you are logged in? Please login again.")
 					return
 				}
-				assignments, err := FetchAssignments(config,
+				assignments, err := api.FetchAssignments(config,
 					fetchEndpoints["current"])
 				if err != nil {
 					fmt.Println(err)
@@ -74,7 +75,7 @@ func main() {
 				}
 
 				for _, a := range assignments {
-					err := SaveAssignment(config.ExercismDirectory, a)
+					err := api.SaveAssignment(config.ExercismDirectory, a)
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -86,7 +87,7 @@ func main() {
 			ShortName: "l",
 			Usage:     "Save exercism.io api credentials",
 			Action: func(c *cli.Context) {
-				ConfigToFile(HomeDir(), askForConfigInfo())
+				configuration.ToFile(configuration.HomeDir(), askForConfigInfo())
 			},
 		},
 		{
@@ -94,7 +95,7 @@ func main() {
 			ShortName: "o",
 			Usage:     "Clear exercism.io api credentials",
 			Action: func(c *cli.Context) {
-				Logout(HomeDir())
+				api.Logout(configuration.HomeDir())
 			},
 		},
 		{
@@ -102,12 +103,12 @@ func main() {
 			ShortName: "p",
 			Usage:     "Fetch upcoming assignment from exercism.io",
 			Action: func(c *cli.Context) {
-				config, err := ConfigFromFile(HomeDir())
+				config, err := configuration.FromFile(configuration.HomeDir())
 				if err != nil {
 					fmt.Println("Are you sure you are logged in? Please login again.")
 					return
 				}
-				assignments, err := FetchAssignments(config,
+				assignments, err := api.FetchAssignments(config,
 					fetchEndpoints["next"])
 				if err != nil {
 					fmt.Println(err)
@@ -115,7 +116,7 @@ func main() {
 				}
 
 				for _, a := range assignments {
-					err := SaveAssignment(config.ExercismDirectory, a)
+					err := api.SaveAssignment(config.ExercismDirectory, a)
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -127,7 +128,7 @@ func main() {
 			ShortName: "s",
 			Usage:     "Submit code to exercism.io on your current assignment",
 			Action: func(c *cli.Context) {
-				config, err := ConfigFromFile(HomeDir())
+				config, err := configuration.FromFile(configuration.HomeDir())
 				if err != nil {
 					fmt.Println("Are you sure you are logged in? Please login again.")
 					return
@@ -153,7 +154,7 @@ func main() {
 				}
 				filename = absPath[len(exDir):]
 
-				if IsTest(filename) {
+				if api.IsTest(filename) {
 					fmt.Println("It looks like this is a test, please enter an example file name.")
 					return
 				}
@@ -164,7 +165,7 @@ func main() {
 					return
 				}
 
-				submissionPath, err := SubmitAssignment(config, filename, code)
+				submissionPath, err := api.SubmitAssignment(config, filename, code)
 				if err != nil {
 					fmt.Printf("There was an issue with your submission: %v\n", err)
 					return
@@ -180,7 +181,7 @@ func main() {
 			ShortName: "w",
 			Usage:     "Get the github username that you are logged in as",
 			Action: func(c *cli.Context) {
-				config, err := ConfigFromFile(HomeDir())
+				config, err := configuration.FromFile(configuration.HomeDir())
 				if err != nil {
 					fmt.Println("Are you sure you are logged in? Please login again.")
 					return
@@ -193,7 +194,7 @@ func main() {
 	app.Run(os.Args)
 }
 
-func askForConfigInfo() (c Config) {
+func askForConfigInfo() (c configuration.Config) {
 	var un, key, dir string
 
 	currentDir, err := os.Getwd()
@@ -229,7 +230,7 @@ func askForConfigInfo() (c Config) {
 		dir = currentDir
 	}
 
-	return Config{un, key, ReplaceTilde(dir), "http://exercism.io"}
+	return configuration.Config{GithubUsername: un, ApiKey: key, ExercismDirectory: configuration.ReplaceTilde(dir), Hostname: "http://exercism.io"}
 }
 
 func absolutePath(path string) (string, error) {

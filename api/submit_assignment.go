@@ -1,47 +1,15 @@
-package main
+package api
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"corylanou/go-exercism/api/configuration"
 )
 
-func FetchAssignments(config Config, path string) (as []Assignment, err error) {
-	url := fmt.Sprintf("%s%s?key=%s", config.Hostname, path, config.ApiKey)
-
-	var req *http.Request
-	if req, err = http.NewRequest("GET", url, nil); err != nil {
-		return
-	}
-
-	var resp *http.Response
-	if resp, err = http.DefaultClient.Do(req); err != nil {
-		err = fmt.Errorf("Error fetching assignments: [%s]", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("Error fetching assignments. HTTP Status Code: %d", resp.StatusCode)
-		return
-	}
-
-	var response struct {
-		Assignments []Assignment
-	}
-
-	dec := json.NewDecoder(resp.Body)
-	if err = dec.Decode(&response); err != nil {
-		err = fmt.Errorf("Error parsing API response: [%s]", err)
-		return
-	}
-
-	as = response.Assignments
-	return
-}
-
-func SubmitAssignment(config Config, filePath string, code []byte) (submissionPath string, err error) {
+func SubmitAssignment(config configuration.Config, filePath string, code []byte) (submissionPath string, err error) {
 	path := "api/v1/user/assignments"
 
 	url := fmt.Sprintf("%s/%s", config.Hostname, path)

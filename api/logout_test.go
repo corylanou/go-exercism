@@ -1,10 +1,12 @@
-package main
+package api
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"corylanou/go-exercism/api/configuration"
+	"github.com/stretchr/testify/assert"
 )
 
 func asserFileDoesNotExist(t *testing.T, filename string) {
@@ -19,11 +21,11 @@ func TestLogoutDeletesConfigFile(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
 
-	c := Config{}
+	c := configuration.Config{}
 
-	ConfigToFile(tmpDir, c)
+	configuration.ToFile(tmpDir, c)
 
 	Logout(tmpDir)
 
-	asserFileDoesNotExist(t, configFilename(tmpDir))
+	asserFileDoesNotExist(t, configuration.Filename(tmpDir))
 }

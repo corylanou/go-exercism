@@ -1,84 +1,16 @@
-package main
+package api
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"corylanou/go-exercism/api/configuration"
+	"github.com/stretchr/testify/assert"
 )
-
-var assignmentsJson = `
-{
-    "assignments": [
-        {
-            "track": "ruby",
-            "slug": "bob",
-            "readme": "Readme text",
-            "test_file": "bob_test.rb",
-            "tests": "Tests Text"
-        }
-    ]
-}
-`
-
-var fetchHandler = func(rw http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	apiKey := r.Form.Get("key")
-	if r.URL.Path != "/api/v1/user/assignments/current" {
-		fmt.Println("Not found")
-		rw.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if apiKey != "myApiKey" {
-		rw.WriteHeader(http.StatusForbidden)
-		fmt.Fprintf(rw, `{"error": "Unable to identify user"}`)
-		return
-	}
-
-	rw.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(rw, assignmentsJson)
-}
-
-func TestFetchWithKey(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(fetchHandler))
-
-	config := Config{
-		Hostname: server.URL,
-		ApiKey:   "myApiKey",
-	}
-
-	assignments, err := FetchAssignments(config, "/api/v1/user/assignments/current")
-	assert.NoError(t, err)
-
-	assert.Equal(t, len(assignments), 1)
-
-	assert.Equal(t, assignments[0].Track, "ruby")
-	assert.Equal(t, assignments[0].Slug, "bob")
-	assert.Equal(t, assignments[0].Readme, "Readme text")
-	assert.Equal(t, assignments[0].TestFile, "bob_test.rb")
-	assert.Equal(t, assignments[0].Tests, "Tests Text")
-
-	server.Close()
-}
-
-func TestFetchWithIncorrectKey(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(fetchHandler))
-
-	config := Config{
-		Hostname: server.URL,
-		ApiKey:   "myWrongApiKey",
-	}
-
-	assignments, err := FetchAssignments(config, "/api/v1/user/assignments/current")
-
-	assert.Error(t, err)
-	assert.Equal(t, len(assignments), 0)
-
-	server.Close()
-}
 
 var submitHandler = func(rw http.ResponseWriter, r *http.Request) {
 	pathMatches := r.URL.Path == "/api/v1/user/assignments"
@@ -164,15 +96,15 @@ func TestSubmitWithKey(t *testing.T) {
 	defer server.Close()
 
 	var code = []byte("My source code\n")
-	config := Config{
+	config := configuration.Config{
 		Hostname: server.URL,
 		ApiKey:   "myApiKey",
 	}
 	response, err := SubmitAssignment(config, "ruby/bob/bob.rb", code)
 	assert.NoError(t, err)
 
-  // We don't use these values in any returns that I can find, only to talk to the server.
-  // Is this the intent or do we plan on using them?  If not, I prefer to keep the data local.
+	// We don't use these values in any returns that I can find, only to talk to the server.
+	// Is this the intent or do we plan on using them?  If not, I prefer to keep the data local.
 	//assert.Equal(t, response.Status, "saved")
 	//assert.Equal(t, response.Language, "ruby")
 	//assert.Equal(t, response.Exercise, "bob")
@@ -184,7 +116,7 @@ func TestSubmitWithIncorrectKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(submitHandler))
 	defer server.Close()
 
-	config := Config{
+	config := configuration.Config{
 		Hostname: server.URL,
 		ApiKey:   "myWrongApiKey",
 	}

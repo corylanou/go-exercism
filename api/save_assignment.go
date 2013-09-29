@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"errors"
@@ -6,14 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 )
-
-type Assignment struct {
-	Track    string
-	Slug     string
-	Readme   string
-	TestFile string `json:"test_file"`
-	Tests    string
-}
 
 func SaveAssignment(dir string, a Assignment) (err error) {
 	assignmentPath := fmt.Sprintf("%s/%s/%s", dir, a.Track, a.Slug)
