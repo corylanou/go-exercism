@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -17,10 +15,6 @@ var FetchEndpoints = map[string]string{
 	"demo":    "/api/v1/assignments/demo",
 }
 
-type fetchResponse struct {
-	Assignments []Assignment
-}
-
 type submitResponse struct {
 	Status         string
 	Language       string
@@ -28,51 +22,38 @@ type submitResponse struct {
 	SubmissionPath string `json:"submission_path"`
 }
 
-type submitError struct {
-	Error string
-}
-
-type submitRequest struct {
-	Key  string `json:"key"`
-	Code string `json:"code"`
-	Path string `json:"path"`
-}
-
 func FetchAssignments(config Config, path string) (as []Assignment, err error) {
 	url := fmt.Sprintf("%s%s?key=%s", config.Hostname, path, config.ApiKey)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
+
+	var req *http.Request
+	if req, err = http.NewRequest("GET", url, nil); err != nil {
 		return
 	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Error fetching assignments: [%s]", err.Error()))
+	var resp *http.Response
+	if resp, err = http.DefaultClient.Do(req); err != nil {
+		err = fmt.Errorf("Error fetching assignments: [%s]", err)
 		return
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New(fmt.Sprintf("Error fetching assignments. HTTP Status Code: %d", resp.StatusCode))
+		err = fmt.Errorf("Error fetching assignments. HTTP Status Code: %d", resp.StatusCode)
 		return
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
+	var response struct {
+		Assignments []Assignment
+	}
 
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Error fetching assignments: [%s]", err.Error()))
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&response); err != nil {
+		err = fmt.Errorf("Error parsing API response: [%s]", err)
 		return
 	}
 
-	var fr fetchResponse
-
-	err = json.Unmarshal(body, &fr)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Error parsing API response: [%s]", err.Error()))
-		return
-	}
-
-	return fr.Assignments, err
+	as = response.Assignments
+	return
 }
 
 func SubmitAssignment(config Config, filePath string, code []byte) (r *submitResponse, err error) {
@@ -80,41 +61,52 @@ func SubmitAssignment(config Config, filePath string, code []byte) (r *submitRes
 
 	url := fmt.Sprintf("%s/%s", config.Hostname, path)
 
-	submission := submitRequest{Key: config.ApiKey, Code: string(code), Path: filePath}
-	submissionJson, err := json.Marshal(submission)
-	if err != nil {
+	submission := struct {
+		Key  string `json:"key"`
+		Code string `json:"code"`
+		Path string `json:"path"`
+	}{
+		Key:  config.ApiKey,
+		Code: string(code),
+		Path: filePath,
+	}
+
+	var submissionJson []byte
+	if submissionJson, err = json.Marshal(submission); err != nil {
 		return
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(submissionJson))
-	if err != nil {
+	var req *http.Request
+	if req, err = http.NewRequest("POST", url, bytes.NewReader(submissionJson)); err != nil {
 		return
 	}
 
 	req.Header.Set("User-Agent", fmt.Sprintf("github.com/kytrinyx/exercism CLI v%s", VERSION))
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Error posting assignment: [%s]", err.Error()))
+	var resp *http.Response
+	if resp, err = http.DefaultClient.Do(req); err != nil {
+		err = fmt.Errorf("Error posting assignment: [%s]", err)
 		return
 	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return
-	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		postError := submitError{}
-		_ = json.Unmarshal(body, &postError)
-		err = errors.New(fmt.Sprintf("Status: %d, Error: %s", resp.StatusCode, postError.Error))
+		response := struct {
+			Error string
+		}{}
+		dec := json.NewDecoder(resp.Body)
+		if err = dec.Decode(&response); err != nil {
+			err = fmt.Errorf("Error parsing API response: [%s]", err)
+			return
+		}
+		err = fmt.Errorf("Status: %d, Error: %s", resp.StatusCode, response.Error)
 		return
 	}
 
-	err = json.Unmarshal(body, &r)
-	if err != nil {
-		err = errors.New(fmt.Sprintf("Error parsing API response: [%s]", err.Error()))
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&r); err != nil {
+		err = fmt.Errorf("Error parsing API response: [%s]", err)
+		return
 	}
 
 	return
